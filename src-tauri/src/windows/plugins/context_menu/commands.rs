@@ -52,7 +52,7 @@ pub fn close_all_context_menus(app: AppHandle) {
 pub fn resize_context_menu(app: AppHandle, width: f64, height: f64, x: f64, y: f64) {
     if let Some(w) = app.get_webview_window("context-menu") {
         let _ = w.set_position(PhysicalPosition::new(x as i32, y as i32));
-        let text_scale = crate::utils::get_text_scale_factor();
-        let _ = w.set_size(LogicalSize::new(width * text_scale, height * text_scale));
+        // 前端传入的 width/height 已是 CSS 像素值，直接使用 LogicalSize
+        let _ = w.set_size(LogicalSize::new(width, height));
     }
 }

@@ -52,7 +52,7 @@ async function resizeWindowToFitMenu() {
     const padding = 10;
     const mainRect = menuContainer.getBoundingClientRect();
     let maxX = mainRect.right, maxY = mainRect.bottom;
-    
+
     document.querySelectorAll('.submenu-container.show').forEach(sub => {
         const rect = sub.getBoundingClientRect();
         maxX = Math.max(maxX, rect.right);
@@ -67,7 +67,7 @@ async function resizeWindowToFitMenu() {
         height: Math.ceil(maxY + padding),
         x: windowPhysX,
         y: windowPhysY
-    }).catch(() => {});
+    }).catch(() => { });
 }
 
 function positionSubmenu(submenu, parentItem) {
@@ -78,7 +78,7 @@ function positionSubmenu(submenu, parentItem) {
     const screenHeight = monitorInfo.height - bottomMargin - windowOrigin.y;
 
     submenu.style.cssText = `max-width:200px;max-height:400px;overflow-y:auto;left:${menuRect.width}px;top:0`;
-    
+
     const submenuRect = submenu.getBoundingClientRect();
     const spaceRight = screenWidth - cssToLogical(menuRect.left + menuRect.width);
     const spaceLeft = cssToLogical(menuRect.left) + windowOrigin.x;
@@ -204,15 +204,15 @@ function createMenuItem(item) {
                     await invoke('show_native_image_preview', { filePath: item.preview_image });
                 } catch (nativeError) {
                     if (nativeError?.toString?.()?.includes('not found') || nativeError?.toString?.()?.includes('Command')) {
-                        invoke('pin_image_from_file', { filePath: item.preview_image, previewMode: true }).catch(() => {});
+                        invoke('pin_image_from_file', { filePath: item.preview_image, previewMode: true }).catch(() => { });
                     }
                 }
             }, 300);
         });
         menuItem.addEventListener('mouseleave', () => {
             if (timer) { clearTimeout(timer); timer = null; }
-            invoke('close_native_image_preview').catch(() => {});
-            invoke('close_image_preview').catch(() => {});
+            invoke('close_native_image_preview').catch(() => { });
+            invoke('close_image_preview').catch(() => { });
         });
     }
 
@@ -231,18 +231,18 @@ function positionMenuAtCursor(options) {
     const menuLogicalH = cssToLogical(menuCssHeight);
 
     let left = Math.max(0, Math.min(options.cursor_x, screenWidth - menuLogicalW));
-    let top = isTrayMenu 
+    let top = isTrayMenu
         ? Math.max(0, options.cursor_y - menuLogicalH)
         : Math.max(0, Math.min(options.cursor_y, screenHeight - menuLogicalH));
 
     const leftSpace = Math.min(logicalToCss(left), MAX_SPACE);
     const topSpace = Math.min(logicalToCss(top), MAX_SPACE);
-    
-    windowOrigin = { 
-        x: left - cssToLogical(leftSpace), 
-        y: top - cssToLogical(topSpace) 
+
+    windowOrigin = {
+        x: left - cssToLogical(leftSpace),
+        y: top - cssToLogical(topSpace)
     };
-    
+
     menuContainer.style.left = `${Math.round(leftSpace)}px`;
     menuContainer.style.top = `${Math.round(topSpace)}px`;
 }
@@ -251,21 +251,25 @@ async function renderMenu(options) {
     scaleFactor = await currentWindow.scaleFactor().catch(() => 1);
     textScale = await invoke('get_system_text_scale').catch(() => 1);
     isTrayMenu = options.is_tray_menu || false;
-    
+
     monitorInfo = {
-        x: options.monitor_x || 0, 
+        x: options.monitor_x || 0,
         y: options.monitor_y || 0,
-        width: options.monitor_width || 1920, 
+        width: options.monitor_width || 1920,
         height: options.monitor_height || 1080
     };
     windowOrigin = { x: 0, y: 0 };
-    
+
     applyTheme(options.theme);
     menuContainer.innerHTML = '';
     options.items.forEach(item => menuContainer.appendChild(createMenuItem(item)));
+
+    // 等待浏览器布局完成后再计算尺寸
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
     positionMenuAtCursor(options);
     menuContainer.style.visibility = 'visible';
-    
+
     await resizeWindowToFitMenu();
     sendMenuRegionsToBackend();
 }
@@ -281,7 +285,7 @@ async function loadAndRenderMenu() {
 async function hideMenu(itemId = null) {
     if (isClosing) return;
     isClosing = true;
-    await invoke('submit_context_menu', { itemId: itemId || null }).catch(() => {});
+    await invoke('submit_context_menu', { itemId: itemId || null }).catch(() => { });
     document.querySelectorAll('.submenu-container').forEach(s => s.classList.remove('show'));
     menuContainer.style.visibility = 'hidden';
     await currentWindow.hide();
@@ -295,7 +299,7 @@ async function sendMenuRegionsToBackend() {
     const totalScale = scaleFactor * textScale;
     const windowPhysX = monitorInfo.x + windowOrigin.x * scaleFactor;
     const windowPhysY = monitorInfo.y + windowOrigin.y * scaleFactor;
-    
+
     const toRegion = rect => ({
         x: Math.round(windowPhysX + rect.left * totalScale),
         y: Math.round(windowPhysY + rect.top * totalScale),
@@ -307,7 +311,7 @@ async function sendMenuRegionsToBackend() {
     const submenus = Array.from(document.querySelectorAll('.submenu-container.show'))
         .map(s => toRegion(s.getBoundingClientRect()));
 
-    await invoke('update_context_menu_regions', { mainMenu, submenus }).catch(() => {});
+    await invoke('update_context_menu_regions', { mainMenu, submenus }).catch(() => { });
 }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideMenu(null); });
